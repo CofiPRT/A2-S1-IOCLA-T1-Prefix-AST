@@ -1,0 +1,177 @@
+---------------------------
+---------- IOCLA ----------
+--- Tema 1 - Prefix AST ---
+---------------------------
+
+Cuprins:
+	1. Sectiunea '.data'				Linia  20
+	2. Functia 'string_to_int'			Linia  32
+	3. Functia 'do_operation'			Linia  55
+	4. Functia 'write_result'			Linia  75
+	5. Functia 'is_operator'			Linia  98
+	6. Label-ul 'evaluate_addresses'	Linia 125
+	7. Functia 'push_nodes'				Linia 147
+	8. Functia 'main'					Linia 172
+
+--- -------------------- ---
+--- 1. Sectiunea '.data' ---
+--- -------------------- ---
+	node_addresses:
+		- Un vector de valori DWORD pentru stocarea adreselor
+		- In principiu, este utilizat pentru salvarea adreselor 'data' din
+		noduri si pentru efectuarea de operatii
+
+	node_number:
+		- Un intreg DWORD ce retine numarul de valori stocate in
+		'node_addresses'
+
+--- -------------------------- ---
+--- 2. Functia 'string_to_int' ---
+--- -------------------------- ---
+	Parametri:
+		- Adresa unui string ce urmeaza a fi transformat in intreg (signed) pe
+		32 de biti
+
+	Operatii:
+		- Se preia parametrul si se verifica daca acesta reprezinta un intreg
+		negativ sau nu. In caz afirmativ, pointerul de adresa sare peste semnul
+		minus pentru a incepe conversia stringului
+		- Se incepe stocarea intregului in registru eax, initializat cu 0
+		- Se trece prin fiecare caracter (byte), pana la sfarsitul stringului
+		(null character), acesta transformandu-se din valoarea ASCII in cifra
+		corespunzatoare
+		- Se adauga cifra antepusa la eax
+		- Se testeaza din nou existenta semnului minus de la inceputul
+		stringului. In caz afirmativ, se calculeaza complementul lui 'eax' fata
+		de 2, pentru a reprezenta un numar negativ.
+
+	Returneaza:
+		- Numarul astfel format, in registrul 'eax'
+
+--- ------------------------- ---
+--- 3. Functia 'do_operation' ---
+--- ------------------------- ---
+	Parametri:
+		- Adresa primulului operand (operandul de stanga)
+		- Adresa celui de-al doilea operand (operandul de dreapta)
+		- Codul aferent operatorului (de la 1 la 4, in ordine '+', '-', '*',
+		'/')
+
+	Operatii:
+		- Se preia adresa operandului de dreapta si se face conversia acestuia
+		in intreg, salvandu-se in registrul 'ebx'
+		- Se reface pasul antepus pentru operandul de stanga, salvandu-se in
+		registrul 'eax'
+		- Se preia codul operatorului, pe baza caruia se decide si efectueaza
+		operatia asupra registrelor 'eax' si 'ebx'
+
+	Returneaza:
+		- Rezultatul operatiei efectuate, salvat in registrul 'eax'
+
+--- ------------------------- ---
+--- 4. Functia 'write_result' ---
+--- ------------------------- ---
+	Parametri:
+		- Adresa unui string in care sa se scrie reprezentarea sub forma de
+		string a unui intreg
+		- Intregul aferent
+
+	Operatii:
+		- Se preiau adresa stringului in registrul 'ecx' si intregul primit ca
+		parametru in registru 'eax'
+		- Se verifica daca bitul de semn al acestui registru este setat, caz in
+		care scrierea incepe cu caracterul minus '-'
+		- Se imparte succesiv la 10 intregul din 'eax' pana ajunge la 0. Restul
+		fiecarei impartiri este salvat pe stiva
+		- Se preia de pe stiva fiecare rest (astfel, in ordinea inversa
+		introducerii), dupa care se scrie in string echivalentul lui drept
+		caracter ASCII.
+		- Se asigura terminarea string-ului cu caracterul NULL
+	
+	Returneaza:
+		- Nu se foloseste vreo valoare de retur a acestei functii
+
+--- ------------------------ ---
+--- 5. Functia 'is_operator' ---
+--- ------------------------ ---
+	Parametri:
+		- Adresa unui string ce urmeaza a fi decis daca reprezinta un operator
+		sau un operand
+	
+	Operatii:
+		- Se preia string-ul
+		- In cazul in care acesta incepe cu caracterul minus '-' se testeaza
+		daca acesta este singurul caracter din string (prin existenta 
+		caracterul NULL imediat dupa). In caz afirmativ, string-ul primit 
+		reprezinta un operator, salvandu-se in 'eax' codul aferent acestuia.
+		- In caz contrar, se compara primul caracter cu ceilalti operatori '+',
+		'*', si '/'. In cazul in care coincide cu unul dintre acestia, se
+		salveaza in registrul 'eax' codul aferent acestuia.
+		- Daca primul caracter nu reprezinta niciun operator, inseamna ca
+		string-ul reprezinta un operand (un numar intreg)
+
+	Returneaza:
+		- In 'eax' valoarea:
+			0 - operand
+			1 - '+'
+			2 - '-'
+			3 - '*'
+			4 - '/'
+
+--- -------------------------------- ---
+--- 6. Label-ul 'evaluate_addresses' ---
+--- -------------------------------- ---
+	Functionalitate:
+		- Doar un bloc de cod din functia 'push_nodes', scris separat pentru
+		lizibilitate
+
+	Operatii:
+		- Se evalueaza array-ul de adrese 'node_addresses', cautandu-se
+		tiparul (de la sfarsitul array-ului)
+		'operand' -> 'operand' -> 'operator'
+		- Operatia antepusa se efectueaza dupa rezultatul apelului functiei
+		'is_operator' asupra fiecarei valori din tipar
+		- In cazul in care se gaseste tiparul, cele 3 valori sunt oferite
+		functiei 'do_operation' pentru efectuarea unei operatii
+		- Rezultatul salvat in 'eax' este scris sub forma de string, prin
+		apel la functia 'write_result' la adresa vechiului operator
+		- Adresele celor doi operanzi folositi sunt "sterse" din moment ce nu
+		mai este nevoie de ei
+		- Daca s-a efectuat o operatie, se verifica din nou existenta tiparului
+		antepus, pentru efectuarea alteia
+
+--- ----------------------- ---
+--- 7. Functia 'push_nodes' ---
+--- ----------------------- ---
+	Parametri:
+		- Niciunul
+		* Se lucreaza asupra registrului 'ebx', ce retine adresa nodului
+		curent
+	
+	Operatii:
+		- (Din motive de recursivitate) Se verifica daca adresa nodului curent
+		este NULL (0), pentru a iesi din recursivitate
+		- Se salveaza adresa 'data' a nodului curent in array-ul de adrese
+		'node_addresses'
+		* Astfel, parcurgand tree-ul in preordine, programul se foloseste de
+		proprietatile AST-ului pentru stabili ordinea efectuarii operatiilor si
+		efectuarea lor propriu-zisa.
+		- Se evalueaza array-ul 'node_addresses' pentru a verifica daca este
+		necesara efectuarea de operatii (label-ul 'evaluate_addresses')
+		- Se efectueaza un apel recursiv pentru copilul stang al acestui nod
+		- Se efectueaza un apel recursiv pentru copilul drept al acestui nod
+		* Preordine
+
+	Returneaza:
+		- Nu se foloseste vreo valoare de retur a acestei functii
+
+--- ----------------- ---
+--- 8. Functia 'main' ---
+--- ----------------- ---
+	Operatii:
+		- Se apeleaza functia 'push_nodes', tinand cont ca in registrul 'ebx'
+		este salvata adresa nodului-radacina din arbore	
+		- Dupa operatiile efectuate, in 'data' din nodul-radacina a fost
+		calculat rezultatul tree-ului. Acesta este afisat
+
+
